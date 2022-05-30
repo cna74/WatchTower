@@ -18,21 +18,29 @@ class AddProduct(QDialog):
 
     def create_dialog(self):
         layout = QGridLayout()
-        label = QLabel("Ender DKP:")
         self.live_check = QCheckBox("live check")
         self.live_check.toggled.connect(self.check_dkp)
         self.text_box = QLineEdit()
+        self.text_box.setPlaceholderText("DKP")
         self.text_box.textChanged.connect(self.check_dkp)
-        self.result = QLabel()
+
+        self.product_name = QLineEdit()
+        self.product_name.setPlaceholderText("product name")
+
+        self.price_on_digi = QLineEdit()
+        self.price_on_digi.setPlaceholderText("digikala price")
+
         cancel, ok = QPushButton("Cancel"), QPushButton("OK")
         cancel.clicked.connect(self.cancel_button)
         ok.clicked.connect(self.ok_button)
-        layout.addWidget(label, 0, 0)
-        layout.addWidget(self.text_box, 1, 0)
-        layout.addWidget(self.live_check, 1, 1)
-        layout.addWidget(self.result, 2, 0)
-        layout.addWidget(cancel, 3, 0)
-        layout.addWidget(ok, 3, 1)
+
+        layout.addWidget(self.text_box, 0, 0)
+        layout.addWidget(self.live_check, 0, 1)
+        layout.addWidget(self.product_name, 1, 0)
+        layout.addWidget(self.price_on_digi, 2, 0)
+
+        layout.addWidget(cancel, 5, 0)
+        layout.addWidget(ok, 5, 1)
         self.setLayout(layout)
 
     def check_dkp(self):
@@ -42,13 +50,13 @@ class AddProduct(QDialog):
                 name = api.get_data(dkp)
             else:
                 name = ""
-            self.result.setText(name)
+            self.product_name.setText(name)
 
     def cancel_button(self):
         self.close()
 
     def ok_button(self):
-        db.add(db.Product(DKP=int(self.text_box.text()), name=self.result.text()))
+        db.add(db.Product(DKP=int(self.text_box.text()), name=self.product_name.text()))
         self.close()
 
 

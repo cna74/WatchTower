@@ -123,7 +123,7 @@ def add(obj):
             session.add(obj)
             session.commit()
         else:
-            logging.error("add : channel {} exist".format(search.name))
+            logging.error("add : channel {} exist".format(search.product_name))
     else:
         raise Warning('WTF! "{}"'.format(obj.__class__))
 
@@ -203,7 +203,7 @@ def update(obj):
         row.bed = obj.bed
         row.wake = obj.wake
         row.up = obj.up
-        row.name = obj.name
+        row.product_name = obj.name
         row.logo = obj.logo
         row.pos = obj.pos
         row.expire = obj.expire
@@ -211,7 +211,7 @@ def update(obj):
 
 
 def remain(channel) -> int:
-    rem = session.query(Message).filter(Message.to_channel == channel.name,
+    rem = session.query(Message).filter(Message.to_channel == channel.product_name,
                                         Message.sent == False,
                                         ~Message.txt.startswith('.'),
                                         ~Message.txt.startswith('/')).all()
