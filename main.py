@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QMainWindow, QApplication, QWidget, QCheckBox, QTableWidget,
                              QVBoxLayout, QTableWidgetItem, QLineEdit, QLabel, QDialog,
-                             QPushButton, QGridLayout)
+                             QPushButton, QGridLayout, QComboBox)
 from PyQt6 import QtWidgets
 import sys
 import api
@@ -13,6 +13,7 @@ app = QApplication(sys.argv)
 class AddProduct(QDialog):
     def __init__(self):
         super().__init__()
+        self.resize(400, 300)
         self.create_dialog()
         self.show()
 
@@ -20,44 +21,79 @@ class AddProduct(QDialog):
         layout = QGridLayout()
         self.live_check = QCheckBox("live check")
         self.live_check.toggled.connect(self.check_dkp)
-        self.text_box = QLineEdit()
-        self.text_box.setPlaceholderText("DKP")
-        self.text_box.textChanged.connect(self.check_dkp)
+        self.DKP = QLineEdit()
+        self.DKP.setPlaceholderText("DKP")
+        self.DKP.textChanged.connect(self.check_dkp)
 
         self.product_name = QLineEdit()
         self.product_name.setPlaceholderText("product name")
 
+        self.your_price = QLineEdit()
+        self.your_price.textChanged.connect(self.comma_separate)
+        self.your_price.setPlaceholderText("your price")
+
         self.price_on_digi = QLineEdit()
         self.price_on_digi.setPlaceholderText("digikala price")
+
+        self.DKPC = QLineEdit()
+        self.DKPC.setPlaceholderText("DKPC")
+
+        self.seller = QComboBox()
+        self.seller.setPlaceholderText("seller")
+        self.color = QComboBox()
+        self.color.setPlaceholderText("color")
 
         cancel, ok = QPushButton("Cancel"), QPushButton("OK")
         cancel.clicked.connect(self.cancel_button)
         ok.clicked.connect(self.ok_button)
 
-        layout.addWidget(self.text_box, 0, 0)
+        layout.addWidget(self.DKP, 0, 0)
         layout.addWidget(self.live_check, 0, 1)
         layout.addWidget(self.product_name, 1, 0)
-        layout.addWidget(self.price_on_digi, 2, 0)
+        layout.addWidget(self.your_price, 2, 0)
+        layout.addWidget(self.price_on_digi, 3, 0)
+        layout.addWidget(self.DKPC, 4, 0)
+        layout.addWidget(self.seller, 1, 1)
+        layout.addWidget(self.color, 2, 1)
 
         layout.addWidget(cancel, 5, 0)
         layout.addWidget(ok, 5, 1)
         self.setLayout(layout)
 
     def check_dkp(self):
-        dkp = self.text_box.text()
+        dkp = self.DKP.text()
         if self.live_check.isChecked():
             if str(dkp).isdigit():
-                name = api.get_data(dkp)
+                # get product data
+                status, variants, name = api.get_data(dkp)
+                # set product name
+                self.product_name.setText(name)
+                # add sellers to ComboBox
+                [self.seller.addItem(v.seller_name) for v in variants]
+                self.seller.setCurrentIndex(0)
+                # add colors to ComboBox
+                [self.color.addItem(v.color) for v in variants]
+                self.color.setCurrentIndex(0)
+
+                # set price of selected seller
+                price_on_digi = [v.price if v.seller_name == self.seller.currentText() else "" for v in variants]
+                self.price_on_digi.setText(f"{int(price_on_digi[0]):,}")
+
             else:
                 name = ""
-            self.product_name.setText(name)
+            # self.product_name.setText(name)
 
     def cancel_button(self):
         self.close()
 
     def ok_button(self):
-        db.add(db.Product(DKP=int(self.text_box.text()), name=self.product_name.text()))
+        db.add(db.Product(DKP=int(self.DKP.text()), name=self.product_name.text()))
         self.close()
+
+    def comma_separate(self, price):
+        price = "".join(str(price).split(","))
+        if str(price).isdigit():
+            self.your_price.setText(f"{int(price):,}")
 
 
 class Monitor(QWidget):

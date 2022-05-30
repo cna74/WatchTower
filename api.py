@@ -2,6 +2,9 @@ import imageio
 import requests
 from PIL import Image
 import exif
+from collections import namedtuple
+
+Variant = namedtuple("Variant", ["seller_name", "price", "warranty", "color", "lead_time", "coondiotion"])
 
 
 def get_data(url=None):
@@ -14,12 +17,16 @@ def get_data(url=None):
     if data.get("is_inactive"):
         status = 404
     name = data["title_fa"]
-    for data in js["data"]["product"]["variants"]:
-        selling_price = data["price"]["selling_price"]
-        seller_name = data["seller"]["title"]
-        warranty = data["warranty"]["title_fa"]
-
-
+    if not data["status"] == "stop_production":
+        condition = data["status"]
+        variants = []
+        for variant in data["variants"]:
+            selling_price = variant["price"]["selling_price"] // 10
+            seller_name = variant["seller"]["title"]
+            warranty = variant["warranty"]["title_fa"]
+            lead_time = variant["lead_time"]
+            color = variant["color"]["title"]
+            variants.append(Variant(seller_name, selling_price, warranty, color, lead_time, condition))
     # image_url = js["data"]["product"]["images"]["main"]["url"][0]
     # array = imageio.imopen(uri=image_url, io_mode="r").read()
     # image = Image.fromarray(array).resize((200, 200))
@@ -28,6 +35,6 @@ def get_data(url=None):
     if status == 404:
         return "not available"
     elif status == 200:
-        return name
+        return status, variants, name
     else:
         print(status)
