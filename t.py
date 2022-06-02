@@ -155,8 +155,7 @@ def find(table, **col):
         if col.get('group_id'):
             channel = session.query(Channel).filter(Channel.group_id == col['group_id']).first()
         elif col.get('admin') and col.get('name'):
-            channel = session.query(Channel).filter(Channel.admin == col['admin'],
-                                                    Channel.name == col['name']).first()
+            channel = session.query(Channel).filter(Channel.admin == col['admin'], Channel.name == col['name']).first()
         elif col.get('admin'):
             channel = session.query(Channel).filter(Channel.admin == col['admin']).all()
             if len(channel) == 1:
@@ -169,8 +168,7 @@ def find(table, **col):
 
     elif table == "member":
         if col.get('admin') and col.get('name'):
-            q = session.query(Channel).filter(Channel.name == col['name'],
-                                              Channel.admin == col['admin']).first()
+            q = session.query(Channel).filter(Channel.name == col['name'], Channel.admin == col['admin']).first()
             if q:
                 member = session.query(Member.number,
                                        Member.calendar).filter(Member.channel_name == col['name'],
@@ -211,28 +209,21 @@ def update(obj):
 
 
 def remain(channel) -> int:
-    rem = session.query(Message).filter(Message.to_channel == channel.product_name,
-                                        Message.sent == False,
-                                        ~Message.txt.startswith('.'),
-                                        ~Message.txt.startswith('/')).all()
+    rem = session.query(Message).filter(Message.to_channel == channel.product_name, Message.sent == False,
+                                        ~Message.txt.startswith('.')).all()
     rem = rem if rem else []
 
     return len(rem)
 
 
 def get_last_msg(channel_name):
-    res = session.query(Message).filter(Message.sent == False,
-                                        ~Message.txt.startswith('.'),
-                                        ~Message.txt.startswith('/'),
-                                        Message.to_channel == channel_name).first()
+    res = session.query(Message).filter(Message.sent == False, ~Message.txt.startswith('.'),
+                                        ~Message.txt.startswith('/')).first()
     if res:
         if res.other.isnumeric():
             media = res.other
-            res = session.query(Message).filter(Message.sent == False,
-                                                ~Message.txt.startswith('.'),
-                                                ~Message.txt.startswith('/'),
-                                                Message.to_channel == channel_name,
-                                                Message.other == media).all()
+            res = session.query(Message).filter(Message.sent == False, ~Message.txt.startswith('.'),
+                                                ~Message.txt.startswith('/')).all()
     return res
 
 # add(Channel(name='@ttiimmeerrr', admin=103086461, group_id=-1001141277396, expire=timedelta(days=7), plan=3))
