@@ -7,6 +7,7 @@ import sys
 import api
 import db
 import util
+import inspect
 
 app = QApplication(sys.argv)
 
@@ -15,7 +16,7 @@ class AddProduct(QDialog):
     def __init__(self):
         super().__init__()
         self.resize(500, 400)
-        self.lowest = self.highest = self.bybox = self.variants = None
+        self.current_variant = self.lowest = self.highest = self.bybox = self.variants = None
         layout = QGridLayout()
         dkp, name, price, digi_price, dkpc, self.count, self.prices = QLabel("DKP:"), QLabel("name:"), QLabel(
             "price:"), QLabel("digi price:"), QLabel("DKPC:"), QLabel("تعداد تنوع"), QLabel("prices:")
@@ -81,9 +82,9 @@ class AddProduct(QDialog):
         self.show()
 
     def clear_views(self):
+        self.seller.clear()
         self.variable.clear()
         self.warranty.clear()
-        self.seller.clear()
 
     def check_dkp(self):
         self.clear_views()
@@ -100,35 +101,20 @@ class AddProduct(QDialog):
                     self.lowest = self.variants.iloc[0]
                     self.highest = self.variants.iloc[-1]
 
-                    self.variable.addItems(self.variants["variable"].unique())
-                    self.seller.addItems(self.variants["seller"].unique())
                     self.count.setText(f"{len(self.variants)} تنوع")
-                    self.mode_changed(self.mode.currentText())
+                    self.fill_data()
                     from_, til = util.add_comma(self.lowest["price"]), util.add_comma(self.highest["price"])
                     self.price_range.setText(f"{from_} to {til}")
                 else:
+                    # out of stock OR stop production
                     self.DKPC.setText(status)
             else:
-                pass
+                self.DKP.setText("فقط عدد وارد کنید")
 
-    def mode_changed(self, mode):
-        if mode == "Low":
-            self.fill_data(self.lowest)
-        elif mode == "High":
-            self.fill_data(self.highest)
-        elif mode == "By Box":
-            self.fill_data(self.bybox)
-        elif mode == "Custom":
-            pass
+    def mode_changed(self):
+        self.fill_data()
 
-    def fill_data(self, variant):
-        self.variable.setCurrentText(variant["variable"])
-        self.seller.setCurrentText(variant["seller"])
-        self.price_on_digi.setText(util.add_comma(variant["price"]))
-        self.DKPC.setText(str(variant["id"]))
-        self.warranty.setCurrentText(variant["warranty"])
-
-    def filter(self, seller=None, variable=None, warranty=None):
+    def filter(self, seller=None, variable=None, warranty=None) -> pandas.DataFrame:
         v = self.variants
         if seller and variable and warranty:
             return v.loc[(v["seller"] == seller) & (v["variable"] == variable) & (v["warranty"] == warranty)]
@@ -145,43 +131,68 @@ class AddProduct(QDialog):
         if warranty:
             return v.loc[v["warranty"] == warranty]
 
-    def seller_changed(self, seller):
-        variant = self.filter(seller=seller)
-        dkpc, variables, warranties = variant["id"], variant["variable"], variant["warranty"]
-        self.variable.clear()
-        self.warranty.clear()
+    def fill_data(self, variant=None):
+        try:
+            self.clear_views()
+            mode = self.mode.currentText()
+            if isinstance(variant, pandas.DataFrame):
+                seller, variable, warranty = variant["seller"].iloc[0], variant["variable"].iloc[0], variant["warranty"].iloc[0]
+                self.current_variant = self.filter(seller=seller, variable=variable, warranty=warranty).iloc[0]
+                self.fill_data(variant=self.current_variant)
 
-        self.variable.addItems(variables.unique())
-        self.warranty.addItems(warranties.unique())
-        self.variable.setCurrentIndex(0)
-        self.warranty.setCurrentIndex(0)
-        self.DKPC.setText(str(dkpc.to_list()[0]))
-        variable = self.variable.currentText()
-        warranty = self.warranty.currentText()
-        price = self.filter(seller=seller, variable=variable, warranty=warranty)["price"].to_list()[0]
-        self.price_on_digi.setText(util.add_comma(price))
-        if not price == self.lowest["price"] and not price == self.highest["price"]:
-            self.mode.setCurrentText("custom")
+            else:
+                if mode == "Low":
+                    variant = self.lowest
+                elif mode == "High":
+                    variant = self.highest
+                elif mode == "By Box":
+                    variant = self.bybox
+
+                self.current_variant = variant
+
+                self.seller.addItems(self.variants["seller"].unique())
+                self.variable.addItems(self.variants["variable"].unique())
+                self.warranty.addItems(self.variants["warranty"].unique())
+
+                if isinstance(variant, pandas.Series):
+                    self.seller.setCurrentText(variant["seller"])
+                    self.variable.setCurrentText(variant["variable"])
+                    self.warranty.setCurrentText(variant["warranty"])
+                    self.DKPC.setText(str(variant["id"]))
+                    self.price_on_digi.setText(util.add_comma(variant["price"]))
+
+        except Exception as E:
+            print(f"{inspect.stack()[0][3]}, {inspect.stack()[1][3]}, {E}")
+
+    def seller_changed(self, seller):
+        try:
+            if inspect.stack()[1][3] == "<module>":
+                if not seller == self.current_variant["seller"]:
+                    self.mode.setCurrentText("Custom")
+                    variant = self.filter(seller=seller)
+                    self.fill_data(variant=variant)
+        except Exception as E:
+            print(f"{inspect.stack()[0][3]}, {inspect.stack()[1][3]}, {E}")
 
     def variable_changed(self, variable):
-        if self.seller.currentText():
-            seller = self.seller.currentText()
-            variant = self.filter(seller=seller, variable=variable)
-            if len(variant) == 1:
-                price = variant["price"]
-                self.price_on_digi.setText(util.add_comma(price.to_list()[0]))
-            else:
-                pass
+        try:
+            if inspect.stack()[1][3] == "<module>":
+                if not variable == self.current_variant["variable"]:
+                    self.mode.setCurrentText("Custom")
+                    variant = self.filter(variable=variable)
+                    self.fill_data(variant=variant)
+        except Exception as E:
+            print(f"{inspect.stack()[0][3]}, {inspect.stack()[1][3]}, {E}")
 
     def warranty_changed(self, warranty):
-        variable = self.variable.currentText()
-        seller = self.seller.currentText()
-        variant = self.filter(warranty=warranty, variable=variable, seller=seller)
-        if len(variant) == 1:
-            price = variant["price"]
-            self.price_on_digi.setText(util.add_comma(price.to_list()[0]))
-        else:
-            pass
+        try:
+            if inspect.stack()[1][3] == "<module>":
+                if not warranty == self.current_variant["warranty"]:
+                    self.mode.setCurrentText("Custom")
+                    variant = self.filter(warranty=warranty)
+                    self.fill_data(variant=variant)
+        except Exception as E:
+            print(f"{inspect.stack()[0][3]}, {inspect.stack()[1][3]}, {E}")
 
     def cancel_button(self):
         self.close()
@@ -240,6 +251,7 @@ class MainWindow(QMainWindow):
         self.monitor.refresh()
 
 
-window = MainWindow()
+# window = MainWindow()
+window = AddProduct()
 window.show()
 sys.exit(app.exec())
