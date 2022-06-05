@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, inspect
+from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -6,24 +6,34 @@ Base = declarative_base()
 
 
 class Product(Base):
-    def __init__(self, DKP, name="", my_sell_price=0, digi_sell_price=0, category="None"):
+    def __init__(self, DKP, name="", category="", my_sell_price=0, digi_sell_price=0, low=0, high=0, bybox=0):
         # required
         self.DKP = DKP
         self.name = name
         self.my_sell_price = my_sell_price
 
         # optional
-        self.digi_sell_price = digi_sell_price
         self.category = category
+        self.low = low
+        self.high = high
+        self.bybox = bybox
+        self.digi_sell_price = digi_sell_price
 
     def __str__(self):
         return f"{self.DKP} - {self.name} - {self.my_sell_price}"
     __tablename__ = "product"
 
+    def __getitem__(self, item):
+        return self.name if item == "name" else None
+
     DKP = Column(Integer, primary_key=True, autoincrement=False)
     name = Column(String)
+    category = Column(String)
     my_sell_price = Column(Integer)
     digi_sell_price = Column(Integer)
+    bybox = Column(Integer)
+    low = Column(Integer)
+    high = Column(Integer)
 
 
 # region create_or_connect
@@ -48,6 +58,5 @@ def remove(obj):
             product.delete()
 
 
-def get_products() -> Product:
+def get_products() -> list[Product]:
     return session.query(Product).all()
-

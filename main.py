@@ -1,13 +1,14 @@
-import pandas
 from PyQt6.QtWidgets import (QMainWindow, QApplication, QWidget, QCheckBox, QTableWidget,
                              QVBoxLayout, QTableWidgetItem, QLineEdit, QLabel, QDialog,
-                             QPushButton, QGridLayout, QComboBox)
+                             QPushButton, QGridLayout, QComboBox, QSpinBox)
+from PyQt6.QtCore import Qt
 from PyQt6 import QtWidgets
+import inspect
+import pandas
+import util
 import sys
 import api
 import db
-import util
-import inspect
 
 app = QApplication(sys.argv)
 
@@ -21,6 +22,7 @@ class AddProduct(QDialog):
         dkp, name, price, digi_price, dkpc, self.count, self.prices = QLabel("DKP:"), QLabel("name:"), QLabel(
             "price:"), QLabel("digi price:"), QLabel("DKPC:"), QLabel("تعداد تنوع"), QLabel("prices:")
         self.product_name = QLineEdit()
+        self.category = None
         self.your_price = QLineEdit()
         self.price_on_digi = QLineEdit()
         self.DKP = QLineEdit()
@@ -92,7 +94,7 @@ class AddProduct(QDialog):
         if self.live_check.isChecked():
             if str(dkp).isdigit():
                 # get product data
-                status, self.variants, name = api.get_data(dkp)
+                status, self.variants, name, self.category = api.get_data(dkp)
                 self.product_name.setText(name)
                 if isinstance(self.variants, pandas.DataFrame):
                     self.bybox = self.variants.iloc[0]
@@ -109,7 +111,7 @@ class AddProduct(QDialog):
                     # out of stock OR stop production
                     self.DKPC.setText(status)
             else:
-                self.DKP.setText("فقط عدد وارد کنید")
+                self.DKP.setText("")
 
     def mode_changed(self):
         self.fill_data()
@@ -136,7 +138,8 @@ class AddProduct(QDialog):
             self.clear_views()
             mode = self.mode.currentText()
             if isinstance(variant, pandas.DataFrame):
-                seller, variable, warranty = variant["seller"].iloc[0], variant["variable"].iloc[0], variant["warranty"].iloc[0]
+                seller, variable, warranty = variant["seller"].iloc[0], variant["variable"].iloc[0], \
+                                             variant["warranty"].iloc[0]
                 self.current_variant = self.filter(seller=seller, variable=variable, warranty=warranty).iloc[0]
                 self.fill_data(variant=self.current_variant)
 
@@ -166,7 +169,7 @@ class AddProduct(QDialog):
 
     def seller_changed(self, seller):
         try:
-            if inspect.stack()[1][3] == "<module>":
+            if inspect.stack()[1][3] == "add_product":
                 if not seller == self.current_variant["seller"]:
                     self.mode.setCurrentText("Custom")
                     variant = self.filter(seller=seller)
@@ -198,60 +201,109 @@ class AddProduct(QDialog):
         self.close()
 
     def ok_button(self):
-        db.add(db.Product(DKP=int(self.DKP.text()), name=self.product_name.text()))
+        dkp, category, name, bybox, low, high = self.DKP.text(), self.category, self.product_name.text(), \
+                                                self.bybox["price"], self.lowest["price"], self.highest[
+                                                    "price"]
+        my_sell_price = util.remove_comma(self.your_price.text())
+        digi_sell_price = util.remove_comma(self.price_on_digi.text())
+        db.add(db.Product(DKP=int(dkp), category=category, name=name, bybox=int(bybox), low=int(low), high=int(high),
+                          digi_sell_price=int(digi_sell_price), my_sell_price=int(my_sell_price)))
         self.close()
 
     def fill_your_price(self, price):
-        self.your_price.setText(util.add_comma(f"{int(price):,}"))
+        self.your_price.setText(util.add_comma(price))
+
+
+class Setting(QDialog):
+    def __init__(self):
+        super(Setting, self).__init__()
+        layout = QGridLayout()
+        refresh_interval = QSpinBox()
+        remain = QLineEdit()
+        remain.setReadOnly(True)
+        layout.addWidget(QLabel("refresh_interval_label"), 0, 0)
+        layout.addWidget(refresh_interval, 0, 1)
+        layout.addWidget(QLabel("minuet"), 0, 2)
+        layout.addWidget(QLabel("remaining requests:"), 1, 0)
+        layout.addWidget(remain, 1, 1)
+
+        self.setLayout(layout)
 
 
 class Monitor(QWidget):
     def __init__(self):
         super().__init__()
+        self.headers = db.Product.__table__.columns.keys()
         self.table = QTableWidget()
-        self.table.setRowCount(10)
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["DKP", "name", "my sell price", "digi sell price"])
-
+        self.table.setRowCount(1)
+        self.table.setColumnCount(len(self.headers))
+        self.table.setHorizontalHeaderLabels(self.headers)
+        # self.table.setDisabled(True)
+        self.current_row = None
+        self.table.cellClicked.connect(self.selected_cell)
         self.vBox = QVBoxLayout()
         self.vBox.addWidget(self.table)
         self.setLayout(self.vBox)
         self.show()
 
+    def keyPressEvent(self, event):
+        """Reimplement the key press event to close the
+        window."""
+        if event.key() == Qt.Key.Key_R:
+            self.refresh()
+        elif event.key() == Qt.Key.Key_Delete:
+            if isinstance(self.table.currentRow(), int):
+                self.table.removeRow(self.table.currentRow())
+            elif isinstance(self.current_row, int):
+                self.table.removeRow(self.current_row)
+        else:
+            pass
+
+    def selected_cell(self, row, column):
+        if isinstance(row, int):
+            self.current_row = row
+
     def refresh(self):
         data = db.get_products()
-        for i, j in enumerate(data, start=0):
-            self.table.setItem(i, 0, QTableWidgetItem(str(j.DKP)))
-            self.table.setItem(i, 1, QTableWidgetItem(str(j.name)))
+        if len(data) > self.table.rowCount():
+            self.table.setRowCount(len(data))
+        for i, product in enumerate(data, start=0):
+            for c, column in enumerate(self.headers):
+                self.table.setItem(i, c, QTableWidgetItem(str(product.__dict__[column])))
         self.table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__()
-        self.resize(720, 500)
+        super(MainWindow, self).__init__()
+        # self.showFullScreen()
+        self.resize(1000, 500)
         self.setWindowTitle("Digi Watchtower")
         self.monitor = Monitor()
         self.setCentralWidget(self.monitor)
-        self.monitor.refresh()
+        # self.monitor.refresh()
 
         self.menuBar = self.menuBar()
         self.fileMenu = self.menuBar.addMenu('File')
-        add = self.fileMenu.addAction("add product")
+        add = self.fileMenu.addAction("Add product")
         add.triggered.connect(self.add_product)
-        refresh = self.menuBar.addAction("refresh")
+        refresh = self.menuBar.addAction("Refresh")
+        setting = self.menuBar.addAction("Setting")
+        setting.triggered.connect(self.setting)
         refresh.triggered.connect(self.monitor.refresh)
         self.show()
-
-        self.add_product()
 
     def add_product(self):
         dialog = AddProduct()
         dialog.exec()
         self.monitor.refresh()
 
+    def setting(self):
+        setting = Setting()
+        setting.exec()
 
-# window = MainWindow()
-window = AddProduct()
+
+window = MainWindow()
 window.show()
 sys.exit(app.exec())

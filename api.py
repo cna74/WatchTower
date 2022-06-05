@@ -1,7 +1,5 @@
-from PIL import Image
 import pandas as pd
 import requests
-import imageio
 import time
 
 
@@ -18,11 +16,13 @@ def get_data(url=None):
             status = 404
         data = js["data"]["product"]
 
-        name = data.get("title_fa")
         if data.get("is_inactive"):
-            return "inactive", None, None
-        elif data.get("status") in ("out_of_stock", "stop_production"):
-            return data.get("status"), None, name
+            return "inactive", None, None, None
+
+        name = data.get("title_fa")
+        category = data["category"]["code"]
+        if data.get("status") in ("out_of_stock", "stop_production"):
+            return data.get("status"), None, name, category
 
         if not data["status"] == "stop_production":
             condition = data["status"]
@@ -33,7 +33,6 @@ def get_data(url=None):
                 variety = "size"
             else:
                 variety = "error"
-
             for variant in data["variants"]:
                 id = variant["id"]
                 selling_price = variant["price"]["selling_price"] // 10
@@ -56,7 +55,7 @@ def get_data(url=None):
         if status == 404:
             return "not available"
         elif status == 200:
-            return status, pd.DataFrame(variants), name
+            return status, pd.DataFrame(variants), name, category
         else:
             print(status)
     except Exception as E:
