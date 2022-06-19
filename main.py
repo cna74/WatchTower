@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import (QMainWindow, QApplication, QWidget, QTableWidget, QStatusBar, QVBoxLayout,
                              QTableWidgetItem, QLabel)
-from ui import setting, editProduct, addProduct
+import editProduct
+import addProduct
+import setting
 from PyQt6.QtCore import Qt
 from PyQt6 import QtWidgets
 from PyQt6 import QtGui
@@ -17,7 +19,8 @@ app = QApplication(sys.argv)
 class Monitor(QWidget):
     def __init__(self):
         super().__init__()
-        self.headers = db.Product.__table__.columns.keys()
+        # no fix_name
+        self.headers: list = db.Product.__table__.columns.keys()[:-1]
 
         self.table = QTableWidget()
         self.table.setRowCount(1)
@@ -156,7 +159,17 @@ class MainWindow(QMainWindow):
 
     def edit_product(self):
         edit_p = editProduct.EditProduct()
+        dkp = self.monitor.table.item(self.monitor.current_row, self.monitor.headers.index("DKP")).text()
+        name = self.monitor.table.item(self.monitor.current_row, self.monitor.headers.index("name")).text()
+        price = self.monitor.table.item(self.monitor.current_row, self.monitor.headers.index("my_sell_price")).text()
+        product: db.Product = db.get(int(dkp))
+        edit_p.product = product
+        edit_p.name.setText(name)
+        edit_p.original_name.setText(product.name)
+        edit_p.price.setText(price)
+        edit_p.check.setChecked(product.fix_name)
         edit_p.exec()
+        self.monitor.fill_table_from_db()
 
 
 window = MainWindow()

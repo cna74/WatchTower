@@ -31,12 +31,12 @@ class Product(Base):
 
     DKP = Column(Integer, primary_key=True, autoincrement=False)
     name = Column(String)
-    fix_name = Column(Boolean)
     category = Column(String)
     my_sell_price = Column(Integer)
     bybox = Column(Integer)
     low = Column(Integer)
     high = Column(Integer)
+    fix_name = Column(Boolean)
 
 
 # region create_or_connect
@@ -88,10 +88,21 @@ def get_products(dkp=False):
         print(f"get_product {E}")
 
 
+def get(dkp):
+    try:
+        return session.query(Product).get(dkp)
+    except Exception as E:
+        print(E)
+
+
 def update_all():
     products = get_products()
     for product in products:
         status, variants, name, category = util.get_data(product.DKP)
+
+        if product.fix_name:
+            name = product.name
+
         if status in ("out_of_stock", "stop_production", "inactive"):
             bybox = lowest = highest = 0
             if status == "inactive":
@@ -102,5 +113,5 @@ def update_all():
             lowest = variants.iloc[0]["price"]
             highest = variants.iloc[-1]["price"]
         product = Product(DKP=product.DKP, name=name, category=category, my_sell_price=product.my_sell_price,
-                          bybox=bybox, low=lowest, high=highest)
+                          bybox=bybox, low=lowest, high=highest, fix_name=product.fix_name)
         edit(product)

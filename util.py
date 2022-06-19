@@ -58,7 +58,7 @@ def get_data(url=None):
             elif data["variants"][0].get("size"):
                 variety = "size"
             else:
-                variety = "error"
+                variety = None
 
             # add bybox variant first
             id = bybox["id"]
@@ -66,7 +66,7 @@ def get_data(url=None):
             seller_name = bybox["seller"]["title"]
             warranty = bybox["warranty"]["title_fa"]
             lead_time = bybox["lead_time"]
-            variable = bybox[variety]["title"]
+            variable = bybox[variety]["title"] if variety else " "
             variants["id"].append(id)
             variants["seller"].append(seller_name)
             variants["price"].append(selling_price)
@@ -80,7 +80,7 @@ def get_data(url=None):
                 seller_name = variant["seller"]["title"]
                 warranty = variant["warranty"]["title_fa"]
                 lead_time = variant["lead_time"]
-                variable = variant[variety]["title"]
+                variable = variant[variety]["title"] if variety else " "
                 variants["id"].append(id)
                 variants["seller"].append(seller_name)
                 variants["price"].append(selling_price)
@@ -88,11 +88,7 @@ def get_data(url=None):
                 variants["variable"].append(variable)
                 variants["lead"].append(lead_time)
                 variants["condition"].append(condition)
-        # image_url = js["data"]["product"]["images"]["main"]["url"][0]
-        # array = imageio.imopen(uri=image_url, io_mode="r").read()
-        # image = Image.fromarray(array).resize((200, 200))
-        # image.save(f"image/{url.split('/')[-2]}.png")
-        #     name = "not available"
+
         if status == 404:
             return "not available"
         elif status == 200:
