@@ -79,27 +79,34 @@ def edit(obj):
         print(f"edit {E}")
 
 
-def get_products(dkp=False):
+def get_products(dkp=False, category=None):
     try:
         if dkp:
             return session.scalar(select(Product.DKP))
-        return session.query(Product).all()
+        elif category:
+            return session.query(Product).filter(Product.category == category).all()
+        else:
+            return session.query(Product).all()
     except Exception as E:
         print(f"get_product {E}")
 
 
-def get(dkp):
+def get_by_dkp(dkp):
     try:
         return session.query(Product).get(dkp)
     except Exception as E:
         print(E)
 
 
+def get_categories():
+    ret = [product.category for product in session.query(Product).all()]
+    return set(ret)
+
+
 def update_all():
     products = get_products()
     for product in products:
         status, variants, name, category = util.get_data(product.DKP)
-
         if product.fix_name:
             name = product.name
 

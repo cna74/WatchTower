@@ -6,7 +6,8 @@ import os
 
 
 def remove_comma(entry):
-    return "".join(str(entry).split(","))
+    re = "".join(str(entry).split(","))
+    return re
 
 
 def add_comma(entry):

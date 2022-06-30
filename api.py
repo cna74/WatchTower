@@ -16,20 +16,20 @@ def get_data(url=None):
             status = 404
         data = js["data"]["product"]
 
-        if data.get("is_inactive"):
+        if data.get_by_dkp("is_inactive"):
             return "inactive", None, None, None
 
-        name = data.get("title_fa")
+        name = data.get_by_dkp("title_fa")
         category = data["category"]["code"]
-        if data.get("status") in ("out_of_stock", "stop_production"):
-            return data.get("status"), None, name, category
+        if data.get_by_dkp("status") in ("out_of_stock", "stop_production"):
+            return data.get_by_dkp("status"), None, name, category
 
         if not data["status"] == "stop_production":
             condition = data["status"]
 
-            if data["variants"][0].get("color"):
+            if data["variants"][0].get_by_dkp("color"):
                 variety = "color"
-            elif data["variants"][0].get("size"):
+            elif data["variants"][0].get_by_dkp("size"):
                 variety = "size"
             else:
                 variety = "error"

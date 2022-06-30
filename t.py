@@ -179,7 +179,7 @@ def find(table, **col):
 
 def update(obj):
     if isinstance(obj, Message):
-        row = session.query(Message).get(obj.id)
+        row = session.query(Message).get_by_dkp(obj.id)
         row.txt = obj.txt
         # row.msg_ch_id = obj.msg_ch_id
         row.sent = obj.sent

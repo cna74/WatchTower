@@ -2,16 +2,19 @@ from PyQt6.QtWidgets import QDialog, QLabel, QLineEdit, QCheckBox, QPushButton, 
 import sys
 
 import db
+import util
 
 
 class EditProduct(QDialog):
     def __init__(self):
         super(EditProduct, self).__init__()
+        self.setWindowTitle("Edit Product")
         self.product = None
         grid = QGridLayout()
         g = QGridLayout()
         label_name, label_original_name, label_price = QLabel("Name"), QLabel("original name"), QLabel("Price")
         self.name, self.original_name, self.price = QLineEdit(), QLineEdit(), QLineEdit()
+        self.price.textChanged.connect(self.price_changed)
         self.original_name.setDisabled(True)
         self.check = QCheckBox("Fix Name")
         cancel, save = QPushButton("Cancel"), QPushButton("Save")
@@ -35,6 +38,7 @@ class EditProduct(QDialog):
     def save_clicked(self):
         self.product.fix_name = self.check.isChecked()
         self.product.name = self.name.text()
+        self.product.my_sell_price = int(util.remove_comma(self.price.text()))
         db.edit(self.product)
         self.close()
 
@@ -50,6 +54,9 @@ class EditProduct(QDialog):
             self.check.setChecked(False)
         else:
             self.check.setChecked(True)
+
+    def price_changed(self, price):
+        self.price.setText(util.add_comma(price))
 
 
 if __name__ == "__main__":

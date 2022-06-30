@@ -5,10 +5,10 @@ import util
 class Setting(QDialog):
     def __init__(self):
         super(Setting, self).__init__()
+        self.setWindowTitle("Setting")
         layout = QGridLayout()
         self.refresh_rate = util.configure()
         self.refresh_interval = QSpinBox()
-        self.refresh_interval.setValue(1)
         self.refresh_interval.minimum()
         remain = QLineEdit()
         remain.setReadOnly(True)
